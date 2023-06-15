@@ -1,0 +1,455 @@
+---
+title: "TallerNBA"
+author: 'Juan Sebastian Gómez Fierro y Juan José Aviles Roa'
+date: ' 26/04/2023 '
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 5
+    fig_width: 6
+    highlight: tango
+    theme: flatly
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+subtitle: 'Taller NBA'
+keywords: Estadistica, datos, R
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### - Funcion para cargar el dataset
+```{r carga}
+##Crear la funcion para poder cargar el dataset
+cargarDatos = function(NomDatos){
+  library(readr)
+  datos = as.data.frame(read_csv(NomDatos, locale=locale(encoding='WINDOWS-1252')))
+}
+
+##Llamar el dataset para guardarlo en la variable llamar
+llamar = cargarDatos('nbaPlayers (2).csv')
+
+##Mirar si el dataset ya se encuentra en dataFrame
+class(llamar)
+```
+### - Separacion de columnas (Fecha)
+
+```{r fecha}
+##Mirar que tipo de dato se encuentra birthDate 
+str(llamar$birthDate)
+
+##Se crea una nueva columna la cual tendra los datos de birthDate pero con formato Date Time 
+llamar$FechaNueva <- as.Date(llamar$birthDate, format = "%B %d, %Y")
+
+##Separar el dia, mes y año 
+llamar$anio <-format(llamar$FechaNueva, "%Y")
+llamar$mes = format(llamar$FechaNueva, "%m")
+llamar$dia = format(llamar$FechaNueva, "%d")
+```
+### - Separacion de columnas (Altura)
+```{r altura}
+##Instalar libreria necesaria 
+library(tidyr)
+
+##Separar altura
+llamar <- separate(llamar, height, into = c("AlturaUno", "AlturaDos"), sep = "-", remove = FALSE)
+```
+
+### -Separar columnas (Peso)
+```{r quitarseparador}
+##Separar Peso
+llamar <- separate(llamar, weight, into = c("pesokg"), sep = "lb", remove = FALSE)
+```
+### -Convertir a dato numerico Altura
+```{r convertir}
+##Convertir a numerico AlturaUno
+llamar$AlturaUno = as.numeric(llamar$AlturaUno)
+
+##Convertir a numerico AlturaDos
+llamar$AlturaDos = as.numeric(llamar$AlturaDos)
+
+##Crear funcion para convertir las medidas de Pies(EEUU) A centimetros(Colombia)
+alturaUno <- function(AlturaUno) {
+  pies <- AlturaUno * 30.48
+}
+llamar$Altura_CM <- apply(llamar["AlturaUno"], 1, alturaUno)
+
+##Crear funcion para convertir las medidas de Pies(EEUU) A centimetros(Colombia)
+alturaDos <- function(AlturaDos) {
+  pies <- AlturaDos * 30.48
+}
+llamar$Altura_CM_DOS <- apply(llamar["AlturaDos"], 1, alturaDos)
+```
+
+### -Convertir a dato numerico Peso
+```{r peso}
+##Convertir a numerico Peso
+llamar$PesoNuevo=as.numeric(llamar$pesokg)
+str(llamar$weight)
+
+##Convertir Libras a Kg
+pesoN = function(pesokg){
+  lb = pesokg * 0.45
+}
+llamar$PesoNuevo = apply(llamar["PesoNuevo"], 1, pesoN)
+```
+
+### -Graficar Altura y Peso para la media y la mediana
+```{r graficas}
+##Crear Funcion para graficar Altura y peso
+grafHist <- function(df, dfCol){
+  if (!is.numeric(dfCol)) {
+    stop("Debe ser un valor numérico")
+  }
+  library(ggplot2)
+  ggplot(df, aes(x=dfCol)) + geom_histogram(col='black', fill='green', alpha=0.4)
+}
+##Se utiliza para limpiar datos NA si esta en forma de campana se utiliza la media si no tiene forma de campana se utiliza le mediana
+grafHist(llamar, llamar$Altura_CM_DOS)
+grafHist(llamar, llamar$Altura_CM)
+grafHist(llamar, llamar$PesoNuevo)
+
+```
+### PRIMER PUNTO
+##Limpieza por moda (ManoHabil,Campo,Nombre,Colegio,Universidad,Nacimiento,Año,Dia,Mes)
+```{r moda}
+##LIMPIAR MES
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$mes))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$mes)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$mes = ifelse(is.na(llamar$mes), "07", llamar$mes)
+
+##LIMPIAR DIA
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$dia))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$dia)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$dia = ifelse(is.na(llamar$dia), "26", llamar$dia)
+
+##LIMPIAR AÑO
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$anio))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$anio)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$anio <- ifelse(is.na(llamar$anio), "1948", llamar$anio)
+
+##LIMPIAR LUGAR DE NACIMIENTO
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$birthPlace))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$birthPlace)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$birthPlace <- ifelse(is.na(llamar$birthPlace), "Chicago, Illinois", llamar$birthPlace)
+
+##LIMPIAR UNIVERSIDAD
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$college))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$college)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$college <- ifelse(is.na(llamar$college), "University of Kentucky", llamar$college)
+
+##LIMPIAR NOMBRE
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$name))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$name)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$name <- ifelse(is.na(llamar$name), "DESCONOCIDO", llamar$name)
+## en la columna hay un dato NAN no se puede remplazar ni con moda-media-mediana entonces se remplaza a desconocido
+
+##LIMPIAR POSICION EN EL CAMPO
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$position))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$position)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$position <- ifelse(is.na(llamar$position), "Shooting Guard", llamar$position)
+
+##LIMPIAR MANO HABIL
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$shoots))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$position)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$shoots <- ifelse(is.na(llamar$shoots), "Right", llamar$shoots)
+
+##LIMPIAR ESCUELA
+##Mirar cuantos datos NA tiene cada columna
+sum(is.na(llamar$highSchool))
+##Mirar cual es el dato mas repetido para limpiar los datos NA con la moda
+tabla <- table(llamar$highSchool)
+valor_mas_repetido <- names(tabla)[which.max(tabla)]
+print(valor_mas_repetido) 
+##Limpiamos con el dato mas repetido la columna deseada
+llamar$highSchool <- ifelse(is.na(llamar$highSchool), "Oak Hill Academy in Mouth of Wilson, Virginia", llamar$highSchool)
+```
+
+### -Limpieza con media o mediana (Altura,Peso)
+```{r limpieza}
+##Crear Funcion para limpiar por media o por mediana
+limpiezaNa <- function(dfCol, param){
+  if(!is.numeric(dfCol)){
+   stop("debe ser numérico")
+  }
+  if(param == 'media'){
+   dfCol <- ifelse(is.na(dfCol), round(mean(dfCol, na.rm=T), 2),dfCol)
+  }else if(param == 'mediana'){
+   dfCol <- ifelse(is.na(dfCol), round(median(dfCol, na.rm=T), 2),dfCol)
+  }else{
+   print("No se puede imputar datos NAN")
+  }
+}
+##Llamar la function para relizar la limpieza
+sum(is.na(llamar$Altura_CM))
+llamar$Altura_CM = limpiezaNa(llamar$Altura_CM, 'media')
+sum(is.na(llamar$Altura_CM_DOS))
+llamar$Altura_CM_DOS = limpiezaNa(llamar$Altura_CM_DOS, 'mediana')
+sum(is.na(llamar$PesoNuevo))
+llamar$PesoNuevo = limpiezaNa(llamar$PesoNuevo, 'mediana')
+```
+### -nuevo filtro llamado universidad 
+```{r uni}
+##Mirar que tipo de dato esta año
+str(llamar$anio)
+##Se realiza el filtro entre 1893 y 1993
+universidad=llamar[llamar$college=='University of Kentucky' | llamar$college=='Virginia University' | llamar$college=='Forest University',]
+```
+
+### SEGUNDO PUNTO
+##Realizar el filtro entre personas nacidas entre 1983 y 1993
+```{r filtro}
+##Mirar que tipo de dato esta año
+str(llamar$anio)
+##Se realiza el filtro entre 1893 y 1993
+universidad$anio[universidad$anio>=1983 & universidad$anio <=1993]
+
+```
+
+### - categorizar posisiones
+```{r category}
+## se crea una columna para categorizar posiciones 
+universidad <- separate(universidad, position, into = c("Posiciones"), remove = FALSE)
+
+```
+### -se pasa a numerico posiciones y se grafican
+```{r grafics}
+##universidad$Posiciones=as.numeric(factor(universidad$Posiciones))
+###
+###
+###Esta grafica podemos observar que altura tiene cada posicion
+ggplot(universidad, aes(x = Altura_CM, y = Posiciones)) +
+  geom_bar(stat = "identity")
+###
+
+library(ggplot2)
+###En esta grafica podemos observar cuanto peso hay en cada mes
+ggplot(universidad, aes(x = PesoNuevo, y = mes)) +
+  geom_bar(stat = "identity",
+           show.legend = FALSE) + # Eliminar la leyenda
+  xlab("PesoNuevo") +
+  ylab("mes") 
+###
+###En esta podemos observar cuanta altura se encuentra en cada año
+ggplot(universidad, aes(x = anio, y = Altura_CM_DOS)) +
+  geom_bar(stat = "identity",
+           show.legend = FALSE) + # Eliminar la leyenda
+  xlab("anio") +
+  ylab("Altura_CM_DOS")
+```
+
+### - funcion de dummy
+```{r dummi}
+##library(dplyr)
+library(dummy)
+##variable_dummy = model.matrix(~ birthPlace + highSchool + 0, data = universidad)
+
+##print(variable_dummy) se le hizo el dummy a las columnas birthPlace + highSchool salen 483 columnas salen 199616 ceros y 829 unoa
+##variable_dummy
+  ##   0      1 
+## 199616    829 entonces hacemos el dummy con la columna posiciones del data frame universidad
+
+variable_dummy = model.matrix(~ Posiciones + 0, data = universidad)
+```
+
+### - Unir los df universidad y variables_dummy
+```{r union}
+datauni = cbind(universidad,variable_dummy)
+```
+
+##Normalizacion de los datos entre 0 y 1
+```{r normalizacion}
+##Convertir a numerico las variables para poder realizar la normalizacion
+datauni$dia=as.numeric(datauni$dia)
+datauni$mes=as.numeric(datauni$mes)
+datauni$anio=as.numeric(datauni$anio)
+datauni$highSchool=as.numeric(factor(datauni$highSchool))
+datauni$name=as.numeric(factor(datauni$name))
+datauni$shoots=as.numeric(factor(datauni$shoots))
+datauni$Posiciones=as.numeric(factor(datauni$Posiciones))
+datauni$birthPlace=as.numeric(factor(datauni$birthPlace))
+
+##Crear funcion para la correlacion
+norm_minmax <- function(x){
+  (x- min(x)) /(max(x)-min(x))
+}
+
+##Realizar correlacion
+dfNorm <- norm_minmax(datauni$Altura_CM)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$Altura_CM_DOS)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$PesoNuevo)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$anio)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$mes)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$dia)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$highSchool)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$name)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm = norm_minmax(datauni$Posiciones)
+
+dfNorm = norm_minmax(datauni$birthPlace)
+
+dfNorm <- norm_minmax(datauni$shoots)
+print(dfNorm)
+summary(dfNorm)
+
+dfNorm <- norm_minmax(datauni$PosicionesCenter)
+dfNorm <- norm_minmax(datauni$PosicionesForward)
+dfNorm <- norm_minmax(datauni$PosicionesGuard)
+dfNorm <- norm_minmax(datauni$PosicionesPoint)
+dfNorm <- norm_minmax(datauni$PosicionesPower)
+dfNorm <- norm_minmax(datauni$PosicionesShooting)
+dfNorm <- norm_minmax(datauni$PosicionesSmall)
+```
+
+### PUNTO CINCO
+##Prueba de D’agostino
+```{r dagostino}
+library(moments)
+agostino <- function(DfCol, nom){
+  resultado <- agostino.test(DfCol)
+  if(resultado$p.value < 0.05){
+    print(paste('La variable no es normal:',nom, 
+                'Valor de P:', resultado$p.value))
+  }else{
+    print(paste('La variable es normal:',nom, 
+                'Valor de P:', resultado$p.value))
+  }
+}
+agostino(datauni$PesoNuevo, 'PesoNuevo')
+agostino(datauni$Altura_CM, 'Altura_CM')
+agostino(datauni$Posiciones, 'Pocisiones')
+```
+
+
+### PUNTO SEIS
+##Prueba de SHAPIRO
+```{r shapi}
+shapiro <- function(DfCol, nom){
+  resultado <- shapiro.test(DfCol)
+  if(resultado$p.value < 0.05){
+    print(paste('La variable no es normal:',nom, 
+                'Valor de P:', resultado$p.value))
+  }else{
+    print(paste('La variable es normal:',nom, 
+                'Valor de P:', resultado$p.value))
+  }
+}
+shapiro(datauni$PesoNuevo, 'PesoNuevo')
+shapiro(datauni$Altura_CM, 'Altura_CM')
+agostino(datauni$Posiciones, 'Pocisiones')
+```
+
+### PUNTO SIETE
+```{r particionar}
+dfuno <- datauni[,c(2,17,16,15,18)]
+dfdos <- datauni[,c(7,8,10,11,20,21,22,23,24,25,26,27)]
+
+llamar = llamar[,-1]
+llamar = llamar[,-1]
+llamar = llamar[,-1]
+llamar = llamar[,-1]
+llamar = llamar[,-1]
+llamar = llamar[,-1]
+llamar = llamar[,-3]
+llamar = llamar[,-4]
+llamar = llamar[,-4]
+llamar = llamar[,-4]
+universidad = universidad[,-1]
+universidad = universidad[,-1]
+universidad = universidad[,-1]
+universidad = universidad[,-1]
+universidad = universidad[,-1]
+universidad = universidad[,-1]
+universidad = universidad[,-6]
+universidad = universidad[,-6]
+universidad = universidad[,-6]
+
+datauni = datauni[,-1]
+datauni = datauni[,-2]
+datauni = datauni[,-2]
+datauni = datauni[,-2]
+datauni = datauni[,-2]
+datauni = datauni[,-7]
+datauni = datauni[,-7]
+datauni = datauni[,-7]
+
+write.csv(llamar, 'LlamarLimpio.csv', row.names = F)
+write.csv(universidad, 'UniversidadLimpia.csv', row.names = F)
+write.csv(datauni, 'DataUniLimpia.csv', row.names = F)
+write.csv(dfuno, 'DfUnoLimpio.csv', row.names = F)
+write.csv(dfuno, 'DfDosLimpio.csv', row.names = F)
+
+```
+
+<script>
+   $(document).ready(function() {
+     $head = $('#header');
+     $head.prepend('<img src=\"Science_Flatline.png\" style=\"float: right;width: 200px;\"/>')
+   });
+</script>
